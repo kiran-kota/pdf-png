@@ -57,6 +57,7 @@ function base64_encode(file) {
   var bitmap = fs.readFileSync(file);
   return new Buffer(bitmap).toString('base64');
 }
+
 async function convert2png(fileName){
   let input   = __dirname + `output/${fileName}.pdf`;
     let converter = new Pdf2Img();
