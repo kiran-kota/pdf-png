@@ -39,9 +39,9 @@ app.post('/pdf-png', async (req, res) =>{
   var fileName = Date.now();
   try {
     var buf = Buffer.from(req.body.file, 'base64');  
-       let converter = new Pdf2Img();
+    let converter = new Pdf2Img();
     var result = await converter.convertPdf2Img(buf, `output/${fileName}.png`, 1);
-    console.log(result);
+    console.log(result, 'result');
     var str = '';
     if(result != null){
       str = base64_encode(`output/${fileName}.png`);      
