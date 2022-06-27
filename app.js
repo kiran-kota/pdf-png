@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const fs      = require('fs');
 const path    = require('path');
 const Pdf2Img = require('pdf2img-promises');
-
+const axios = require('axios');
 
 const app = express();
 app.use(bodyParser.json({limit: '50mb'}));
@@ -19,6 +19,49 @@ app.listen(port, () => console.log('servert started at ' + port));
 
 app.get('/', (req, res) => res.send('welcome'));
 
+app.get('/download/:id', (req, res)=>{
+  const path = `output/${req.params.id}`;
+  res.download(path);
+});
+
+
+
+app.get('/upload/:id/:gid', async (req, res)=>{
+  const path = `output/${req.params.id}.pdf`;
+  await download(req.params.gid, req.params.id);
+  res.json({status: true});
+});
+
+async function download(id, filename){
+  const url = 'https://drive.google.com/uc?export=download&id=' + id;
+  const path = `output/${filename}.pdf`;
+
+  const response = await axios.get(url, {responseType: "stream"});
+  response.data.pipe(fs.createWriteStream(path));  
+  setTimeout(async () =>  await convert2png(filename), 3000);
+}
+
+
+
+
+async function downloadFile(id, filename) {  
+  const url = 'https://drive.google.com/uc?export=download&id=' + id;
+  const path = `output/${filename}.pdf`; //path.resolve(__dirname, 'output', id + '.pdf');
+  const writer = fs.createWriteStream(path)
+
+  const response = await axios({
+    url,
+    method: 'GET',
+    responseType: 'stream'
+  })
+
+  response.data.pipe(writer);
+
+  return new Promise((resolve, reject) => {
+    writer.on('finish', resolve)
+    writer.on('error', reject)
+  });
+}
 
 app.post('/convert', (req, res)=>{
   console.log(req.body);
@@ -31,8 +74,8 @@ app.post('/convert', (req, res)=>{
           console.log('buffer saved!');
       }
   });
-    res.json({status: true});
-  });
+  res.json({status: true});
+});
 
 
 app.post('/pdf-png', async (req, res) =>{
@@ -59,7 +102,8 @@ function base64_encode(file) {
 }
 
 async function convert2png(fileName){
-  let input   = __dirname + `output/${fileName}.pdf`;
+  let input   = __dirname + `/output/${fileName}.pdf`;
+  console.log(input, 'input file');
     let converter = new Pdf2Img();
     converter.on(fileName, (msg) => console.log('Received: ', msg));
     converter.setOptions({
