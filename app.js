@@ -1,11 +1,21 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const cloudinary = require('cloudinary').v2;
 
 const fs      = require('fs');
 const path    = require('path');
 const Pdf2Img = require('pdf2img-promises');
 const axios = require('axios');
+
+
+// cloudinary configuration
+cloudinary.config({
+  cloud_name: "vikramin-export",
+  api_key: "579396547732622",
+  api_secret: "WS_-RNNSzhE4AxqPrVO1cTTWHpM"
+});
+
 
 const app = express();
 app.use(bodyParser.json({limit: '50mb'}));
@@ -38,7 +48,7 @@ async function download(id, filename){
 
   const response = await axios.get(url, {responseType: "stream"});
   response.data.pipe(fs.createWriteStream(path));  
-  setTimeout(async () =>  await convert2png(filename), 3000);
+  setTimeout(async () =>  await convert2png(filename), 10000);
 }
 
 
@@ -83,13 +93,17 @@ app.post('/pdf-png', async (req, res) =>{
   try {
     var buf = Buffer.from(req.body.file, 'base64');  
     let converter = new Pdf2Img();
-    var result = await converter.convertPdf2Img(buf, `output/${fileName}.png`, 1);
-    console.log(result, 'result');
-    var str = '';
-    if(result != null){
-      str = base64_encode(`output/${fileName}.png`);      
+    var conresult = await converter.convertPdf2Img(buf, `output/${fileName}.png`, 1);
+    var result = null;
+    // if(result != null){
+    //   str = base64_encode(`output/${fileName}.png`);      
+    // }
+    if(conresult != null){
+      result = await cloudinary.uploader.upload(__dirname + `/output/${fileName}.png`);
+      console.log(result, 'result');
     }
-    return res.status(200).json(str);
+
+    return res.status(200).json(result);
 
   } catch (error) {
     return res.status(404).json(error);
@@ -102,6 +116,7 @@ function base64_encode(file) {
 }
 
 async function convert2png(fileName){
+ try {
   let input   = __dirname + `/output/${fileName}.pdf`;
   console.log(input, 'input file');
     let converter = new Pdf2Img();
@@ -113,9 +128,14 @@ async function convert2png(fileName){
       quality: 100,                               // default 100
       outputdir: __dirname + path.sep + 'output', // output folder, default null (if null given, then it will create folder name same as file name)
       outputname: fileName,                       // output file name, dafault null (if null given, then it will create image name same as input name)
-      page: 0                                  // convert selected page, default null (if null given, then it will convert all pages)
+      page: 1                                  // convert selected page, default null (if null given, then it will convert all pages)
     });
-    return await converter.convert(input);    
+    await converter.convert(input); 
+    const result = await cloudinary.uploader.upload(__dirname + `/output/${fileName}_1.png`);
+    console.log(result, 'result');
+ } catch (error) {
+   console.log(error);
+ }  
 }
 
 
